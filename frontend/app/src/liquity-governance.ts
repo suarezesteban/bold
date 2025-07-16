@@ -681,8 +681,8 @@ export function useBribingClaim(
               + epochDuration;
 
             // voting power at the end of the epoch
-            const userVP = votingPower(userAllocation.voteLQTY, userAllocation.voteOffset, epochEnd);
-            const totalVP = votingPower(totalAllocation.voteLQTY, totalAllocation.voteOffset, epochEnd);
+            const userVP = votingPower(userAllocation.voteLQTY, 0n, epochEnd);
+            const totalVP = votingPower(totalAllocation.voteLQTY, 0n, epochEnd);
             const remainingVP = totalVP - claimedVotes;
 
             if (remainingVP > 0n && userVP > 0n) {
