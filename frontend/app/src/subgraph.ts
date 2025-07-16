@@ -257,20 +257,18 @@ export async function getIndexedInitiatives() {
 }
 
 const AllocationHistoryQuery = graphql(`
-  query AllocationHistory($user: String $initiative: String) {
+  query AllocationHistory($user: String, $initiative: String) {
     userAllocations: governanceAllocations(
       where: {
         initiative: $initiative
         user: $user
       }
-      orderBy: epoch
+      orderBy: atEpoch
       orderDirection: desc
     ) {
-      epoch
+      atEpoch
       voteLQTY
       vetoLQTY
-      voteOffset
-      vetoOffset
     }
 
     totalAllocations: governanceAllocations(
@@ -278,17 +276,16 @@ const AllocationHistoryQuery = graphql(`
         initiative: $initiative
         user: null
       }
-      orderBy: epoch
+      orderBy: atEpoch
       orderDirection: desc
     ) {
-      epoch
+      atEpoch
       voteLQTY
       vetoLQTY
-      voteOffset
-      vetoOffset
     }
   }
 `);
+
 
 // A user's allocation history of a single initiative against the total allocations to that initiative,
 // ordered by descending epoch
