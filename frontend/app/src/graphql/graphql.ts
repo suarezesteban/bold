@@ -15,7 +15,7 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   BigDecimal: { input: string; output: string; }
-  BigInt: { input: bigint; output: bigint; }
+  BigInt: { input: string; output: string; }
   Bytes: { input: string; output: string; }
   /**
    * 8 bytes signed integer
@@ -284,26 +284,28 @@ export enum Collateral_OrderBy {
 
 export type GovernanceAllocation = {
   __typename?: 'GovernanceAllocation';
-  atEpoch: Scalars['BigInt']['output'];
+  epoch: Scalars['BigInt']['output'];
   id: Scalars['ID']['output'];
   initiative: GovernanceInitiative;
-  user: GovernanceUser;
+  user?: Maybe<Scalars['String']['output']>;
   vetoLQTY: Scalars['BigInt']['output'];
+  vetoOffset: Scalars['BigInt']['output'];
   voteLQTY: Scalars['BigInt']['output'];
+  voteOffset: Scalars['BigInt']['output'];
 };
 
 export type GovernanceAllocation_Filter = {
   /** Filter for the block changed event. */
   _change_block?: InputMaybe<BlockChangedFilter>;
   and?: InputMaybe<Array<InputMaybe<GovernanceAllocation_Filter>>>;
-  atEpoch?: InputMaybe<Scalars['BigInt']['input']>;
-  atEpoch_gt?: InputMaybe<Scalars['BigInt']['input']>;
-  atEpoch_gte?: InputMaybe<Scalars['BigInt']['input']>;
-  atEpoch_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
-  atEpoch_lt?: InputMaybe<Scalars['BigInt']['input']>;
-  atEpoch_lte?: InputMaybe<Scalars['BigInt']['input']>;
-  atEpoch_not?: InputMaybe<Scalars['BigInt']['input']>;
-  atEpoch_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+  epoch?: InputMaybe<Scalars['BigInt']['input']>;
+  epoch_gt?: InputMaybe<Scalars['BigInt']['input']>;
+  epoch_gte?: InputMaybe<Scalars['BigInt']['input']>;
+  epoch_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+  epoch_lt?: InputMaybe<Scalars['BigInt']['input']>;
+  epoch_lte?: InputMaybe<Scalars['BigInt']['input']>;
+  epoch_not?: InputMaybe<Scalars['BigInt']['input']>;
+  epoch_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
   id?: InputMaybe<Scalars['ID']['input']>;
   id_gt?: InputMaybe<Scalars['ID']['input']>;
   id_gte?: InputMaybe<Scalars['ID']['input']>;
@@ -335,7 +337,6 @@ export type GovernanceAllocation_Filter = {
   initiative_starts_with_nocase?: InputMaybe<Scalars['String']['input']>;
   or?: InputMaybe<Array<InputMaybe<GovernanceAllocation_Filter>>>;
   user?: InputMaybe<Scalars['String']['input']>;
-  user_?: InputMaybe<GovernanceUser_Filter>;
   user_contains?: InputMaybe<Scalars['String']['input']>;
   user_contains_nocase?: InputMaybe<Scalars['String']['input']>;
   user_ends_with?: InputMaybe<Scalars['String']['input']>;
@@ -363,6 +364,14 @@ export type GovernanceAllocation_Filter = {
   vetoLQTY_lte?: InputMaybe<Scalars['BigInt']['input']>;
   vetoLQTY_not?: InputMaybe<Scalars['BigInt']['input']>;
   vetoLQTY_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+  vetoOffset?: InputMaybe<Scalars['BigInt']['input']>;
+  vetoOffset_gt?: InputMaybe<Scalars['BigInt']['input']>;
+  vetoOffset_gte?: InputMaybe<Scalars['BigInt']['input']>;
+  vetoOffset_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+  vetoOffset_lt?: InputMaybe<Scalars['BigInt']['input']>;
+  vetoOffset_lte?: InputMaybe<Scalars['BigInt']['input']>;
+  vetoOffset_not?: InputMaybe<Scalars['BigInt']['input']>;
+  vetoOffset_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
   voteLQTY?: InputMaybe<Scalars['BigInt']['input']>;
   voteLQTY_gt?: InputMaybe<Scalars['BigInt']['input']>;
   voteLQTY_gte?: InputMaybe<Scalars['BigInt']['input']>;
@@ -371,25 +380,33 @@ export type GovernanceAllocation_Filter = {
   voteLQTY_lte?: InputMaybe<Scalars['BigInt']['input']>;
   voteLQTY_not?: InputMaybe<Scalars['BigInt']['input']>;
   voteLQTY_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+  voteOffset?: InputMaybe<Scalars['BigInt']['input']>;
+  voteOffset_gt?: InputMaybe<Scalars['BigInt']['input']>;
+  voteOffset_gte?: InputMaybe<Scalars['BigInt']['input']>;
+  voteOffset_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+  voteOffset_lt?: InputMaybe<Scalars['BigInt']['input']>;
+  voteOffset_lte?: InputMaybe<Scalars['BigInt']['input']>;
+  voteOffset_not?: InputMaybe<Scalars['BigInt']['input']>;
+  voteOffset_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
 };
 
 export enum GovernanceAllocation_OrderBy {
-  AtEpoch = 'atEpoch',
+  Epoch = 'epoch',
   Id = 'id',
   Initiative = 'initiative',
   InitiativeId = 'initiative__id',
+  InitiativeRegistered = 'initiative__registered',
   User = 'user',
-  UserAllocatedLqty = 'user__allocatedLQTY',
-  UserId = 'user__id',
-  UserStakedLqty = 'user__stakedLQTY',
-  UserStakedOffset = 'user__stakedOffset',
   VetoLqty = 'vetoLQTY',
-  VoteLqty = 'voteLQTY'
+  VetoOffset = 'vetoOffset',
+  VoteLqty = 'voteLQTY',
+  VoteOffset = 'voteOffset'
 }
 
 export type GovernanceInitiative = {
   __typename?: 'GovernanceInitiative';
   id: Scalars['ID']['output'];
+  registered: Scalars['Boolean']['output'];
 };
 
 export type GovernanceInitiative_Filter = {
@@ -405,84 +422,15 @@ export type GovernanceInitiative_Filter = {
   id_not?: InputMaybe<Scalars['ID']['input']>;
   id_not_in?: InputMaybe<Array<Scalars['ID']['input']>>;
   or?: InputMaybe<Array<InputMaybe<GovernanceInitiative_Filter>>>;
+  registered?: InputMaybe<Scalars['Boolean']['input']>;
+  registered_in?: InputMaybe<Array<Scalars['Boolean']['input']>>;
+  registered_not?: InputMaybe<Scalars['Boolean']['input']>;
+  registered_not_in?: InputMaybe<Array<Scalars['Boolean']['input']>>;
 };
 
 export enum GovernanceInitiative_OrderBy {
-  Id = 'id'
-}
-
-export type GovernanceUser = {
-  __typename?: 'GovernanceUser';
-  allocated: Array<Scalars['Bytes']['output']>;
-  allocatedLQTY: Scalars['BigInt']['output'];
-  allocations: Array<GovernanceAllocation>;
-  id: Scalars['ID']['output'];
-  stakedLQTY: Scalars['BigInt']['output'];
-  stakedOffset: Scalars['BigInt']['output'];
-};
-
-
-export type GovernanceUserAllocationsArgs = {
-  first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<GovernanceAllocation_OrderBy>;
-  orderDirection?: InputMaybe<OrderDirection>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<GovernanceAllocation_Filter>;
-};
-
-export type GovernanceUser_Filter = {
-  /** Filter for the block changed event. */
-  _change_block?: InputMaybe<BlockChangedFilter>;
-  allocated?: InputMaybe<Array<Scalars['Bytes']['input']>>;
-  allocatedLQTY?: InputMaybe<Scalars['BigInt']['input']>;
-  allocatedLQTY_gt?: InputMaybe<Scalars['BigInt']['input']>;
-  allocatedLQTY_gte?: InputMaybe<Scalars['BigInt']['input']>;
-  allocatedLQTY_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
-  allocatedLQTY_lt?: InputMaybe<Scalars['BigInt']['input']>;
-  allocatedLQTY_lte?: InputMaybe<Scalars['BigInt']['input']>;
-  allocatedLQTY_not?: InputMaybe<Scalars['BigInt']['input']>;
-  allocatedLQTY_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
-  allocated_contains?: InputMaybe<Array<Scalars['Bytes']['input']>>;
-  allocated_contains_nocase?: InputMaybe<Array<Scalars['Bytes']['input']>>;
-  allocated_not?: InputMaybe<Array<Scalars['Bytes']['input']>>;
-  allocated_not_contains?: InputMaybe<Array<Scalars['Bytes']['input']>>;
-  allocated_not_contains_nocase?: InputMaybe<Array<Scalars['Bytes']['input']>>;
-  allocations_?: InputMaybe<GovernanceAllocation_Filter>;
-  and?: InputMaybe<Array<InputMaybe<GovernanceUser_Filter>>>;
-  id?: InputMaybe<Scalars['ID']['input']>;
-  id_gt?: InputMaybe<Scalars['ID']['input']>;
-  id_gte?: InputMaybe<Scalars['ID']['input']>;
-  id_in?: InputMaybe<Array<Scalars['ID']['input']>>;
-  id_lt?: InputMaybe<Scalars['ID']['input']>;
-  id_lte?: InputMaybe<Scalars['ID']['input']>;
-  id_not?: InputMaybe<Scalars['ID']['input']>;
-  id_not_in?: InputMaybe<Array<Scalars['ID']['input']>>;
-  or?: InputMaybe<Array<InputMaybe<GovernanceUser_Filter>>>;
-  stakedLQTY?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedLQTY_gt?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedLQTY_gte?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedLQTY_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
-  stakedLQTY_lt?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedLQTY_lte?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedLQTY_not?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedLQTY_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
-  stakedOffset?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedOffset_gt?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedOffset_gte?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedOffset_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
-  stakedOffset_lt?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedOffset_lte?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedOffset_not?: InputMaybe<Scalars['BigInt']['input']>;
-  stakedOffset_not_in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
-};
-
-export enum GovernanceUser_OrderBy {
-  Allocated = 'allocated',
-  AllocatedLqty = 'allocatedLQTY',
-  Allocations = 'allocations',
   Id = 'id',
-  StakedLqty = 'stakedLQTY',
-  StakedOffset = 'stakedOffset'
+  Registered = 'registered'
 }
 
 export type InterestBatch = {
@@ -689,8 +637,6 @@ export type Query = {
   governanceAllocations: Array<GovernanceAllocation>;
   governanceInitiative?: Maybe<GovernanceInitiative>;
   governanceInitiatives: Array<GovernanceInitiative>;
-  governanceUser?: Maybe<GovernanceUser>;
-  governanceUsers: Array<GovernanceUser>;
   interestBatch?: Maybe<InterestBatch>;
   interestBatches: Array<InterestBatch>;
   interestRateBracket?: Maybe<InterestRateBracket>;
@@ -792,24 +738,6 @@ export type QueryGovernanceInitiativesArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   subgraphError?: _SubgraphErrorPolicy_;
   where?: InputMaybe<GovernanceInitiative_Filter>;
-};
-
-
-export type QueryGovernanceUserArgs = {
-  block?: InputMaybe<Block_Height>;
-  id: Scalars['ID']['input'];
-  subgraphError?: _SubgraphErrorPolicy_;
-};
-
-
-export type QueryGovernanceUsersArgs = {
-  block?: InputMaybe<Block_Height>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<GovernanceUser_OrderBy>;
-  orderDirection?: InputMaybe<OrderDirection>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  subgraphError?: _SubgraphErrorPolicy_;
-  where?: InputMaybe<GovernanceUser_Filter>;
 };
 
 
@@ -1121,43 +1049,51 @@ export type BlockNumberQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type BlockNumberQuery = { __typename?: 'Query', _meta?: { __typename?: '_Meta_', block: { __typename?: '_Block_', number: number } } | null };
 
-export type BorrowerInfoQueryVariables = Exact<{
+export type NextOwnerIndexesByBorrowerQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type BorrowerInfoQuery = { __typename?: 'Query', borrowerInfo?: { __typename?: 'BorrowerInfo', nextOwnerIndexes: Array<number> } | null };
+export type NextOwnerIndexesByBorrowerQuery = { __typename?: 'Query', borrowerInfo?: { __typename?: 'BorrowerInfo', nextOwnerIndexes: Array<number> } | null };
 
-export type TroveStatusesByAccountQueryVariables = Exact<{
+export type TrovesByAccountQueryVariables = Exact<{
   account: Scalars['Bytes']['input'];
 }>;
 
 
-export type TroveStatusesByAccountQuery = { __typename?: 'Query', troves: Array<{ __typename?: 'Trove', id: string, closedAt?: bigint | null, createdAt: bigint, mightBeLeveraged: boolean, status: TroveStatus }> };
+export type TrovesByAccountQuery = { __typename?: 'Query', troves: Array<{ __typename?: 'Trove', id: string, closedAt?: string | null, createdAt: string, mightBeLeveraged: boolean, status: TroveStatus }> };
 
-export type TroveStatusByIdQueryVariables = Exact<{
+export type TroveByIdQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type TroveStatusByIdQuery = { __typename?: 'Query', trove?: { __typename?: 'Trove', id: string, closedAt?: bigint | null, createdAt: bigint, mightBeLeveraged: boolean, status: TroveStatus } | null };
+export type TroveByIdQuery = { __typename?: 'Query', trove?: { __typename?: 'Trove', id: string, borrower: string, closedAt?: string | null, createdAt: string, mightBeLeveraged: boolean, previousOwner: string, status: TroveStatus } | null };
 
 export type InterestBatchesQueryVariables = Exact<{
   ids: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
 }>;
 
 
-export type InterestBatchesQuery = { __typename?: 'Query', interestBatches: Array<{ __typename?: 'InterestBatch', batchManager: string, debt: bigint, coll: bigint, annualInterestRate: bigint, annualManagementFee: bigint, collateral: { __typename?: 'Collateral', collIndex: number } }> };
+export type InterestBatchesQuery = { __typename?: 'Query', interestBatches: Array<{ __typename?: 'InterestBatch', batchManager: string, debt: string, coll: string, annualInterestRate: string, annualManagementFee: string, collateral: { __typename?: 'Collateral', collIndex: number } }> };
 
 export type AllInterestRateBracketsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type AllInterestRateBracketsQuery = { __typename?: 'Query', interestRateBrackets: Array<{ __typename?: 'InterestRateBracket', rate: bigint, totalDebt: bigint, collateral: { __typename?: 'Collateral', collIndex: number } }> };
+export type AllInterestRateBracketsQuery = { __typename?: 'Query', interestRateBrackets: Array<{ __typename?: 'InterestRateBracket', rate: string, totalDebt: string, collateral: { __typename?: 'Collateral', collIndex: number } }> };
 
 export type GovernanceInitiativesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GovernanceInitiativesQuery = { __typename?: 'Query', governanceInitiatives: Array<{ __typename?: 'GovernanceInitiative', id: string }> };
+
+export type AllocationHistoryQueryVariables = Exact<{
+  user?: InputMaybe<Scalars['String']['input']>;
+  initiative?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type AllocationHistoryQuery = { __typename?: 'Query', userAllocations: Array<{ __typename?: 'GovernanceAllocation', epoch: string, voteLQTY: string, vetoLQTY: string, voteOffset: string, vetoOffset: string }>, totalAllocations: Array<{ __typename?: 'GovernanceAllocation', epoch: string, voteLQTY: string, vetoLQTY: string, voteOffset: string, vetoOffset: string }> };
 
 export class TypedDocumentString<TResult, TVariables>
   extends String
@@ -1187,15 +1123,15 @@ export const BlockNumberDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<BlockNumberQuery, BlockNumberQueryVariables>;
-export const BorrowerInfoDocument = new TypedDocumentString(`
-    query BorrowerInfo($id: ID!) {
+export const NextOwnerIndexesByBorrowerDocument = new TypedDocumentString(`
+    query NextOwnerIndexesByBorrower($id: ID!) {
   borrowerInfo(id: $id) {
     nextOwnerIndexes
   }
 }
-    `) as unknown as TypedDocumentString<BorrowerInfoQuery, BorrowerInfoQueryVariables>;
-export const TroveStatusesByAccountDocument = new TypedDocumentString(`
-    query TroveStatusesByAccount($account: Bytes!) {
+    `) as unknown as TypedDocumentString<NextOwnerIndexesByBorrowerQuery, NextOwnerIndexesByBorrowerQueryVariables>;
+export const TrovesByAccountDocument = new TypedDocumentString(`
+    query TrovesByAccount($account: Bytes!) {
   troves(
     where: {or: [{previousOwner: $account, status: liquidated}, {borrower: $account, status_in: [active, redeemed]}]}
     orderBy: updatedAt
@@ -1208,18 +1144,20 @@ export const TroveStatusesByAccountDocument = new TypedDocumentString(`
     status
   }
 }
-    `) as unknown as TypedDocumentString<TroveStatusesByAccountQuery, TroveStatusesByAccountQueryVariables>;
-export const TroveStatusByIdDocument = new TypedDocumentString(`
-    query TroveStatusById($id: ID!) {
+    `) as unknown as TypedDocumentString<TrovesByAccountQuery, TrovesByAccountQueryVariables>;
+export const TroveByIdDocument = new TypedDocumentString(`
+    query TroveById($id: ID!) {
   trove(id: $id) {
     id
+    borrower
     closedAt
     createdAt
     mightBeLeveraged
+    previousOwner
     status
   }
 }
-    `) as unknown as TypedDocumentString<TroveStatusByIdQuery, TroveStatusByIdQueryVariables>;
+    `) as unknown as TypedDocumentString<TroveByIdQuery, TroveByIdQueryVariables>;
 export const InterestBatchesDocument = new TypedDocumentString(`
     query InterestBatches($ids: [ID!]!) {
   interestBatches(where: {id_in: $ids}) {
@@ -1236,7 +1174,7 @@ export const InterestBatchesDocument = new TypedDocumentString(`
     `) as unknown as TypedDocumentString<InterestBatchesQuery, InterestBatchesQueryVariables>;
 export const AllInterestRateBracketsDocument = new TypedDocumentString(`
     query AllInterestRateBrackets {
-  interestRateBrackets(orderBy: rate) {
+  interestRateBrackets(first: 1000, where: {totalDebt_gt: 0}, orderBy: rate) {
     collateral {
       collIndex
     }
@@ -1252,3 +1190,29 @@ export const GovernanceInitiativesDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<GovernanceInitiativesQuery, GovernanceInitiativesQueryVariables>;
+export const AllocationHistoryDocument = new TypedDocumentString(`
+    query AllocationHistory($user: String, $initiative: String) {
+  userAllocations: governanceAllocations(
+    where: {initiative: $initiative, user: $user}
+    orderBy: epoch
+    orderDirection: desc
+  ) {
+    epoch
+    voteLQTY
+    vetoLQTY
+    voteOffset
+    vetoOffset
+  }
+  totalAllocations: governanceAllocations(
+    where: {initiative: $initiative, user: null}
+    orderBy: epoch
+    orderDirection: desc
+  ) {
+    epoch
+    voteLQTY
+    vetoLQTY
+    voteOffset
+    vetoOffset
+  }
+}
+    `) as unknown as TypedDocumentString<AllocationHistoryQuery, AllocationHistoryQueryVariables>;

@@ -8,6 +8,7 @@ import type {
   PositionLoanCommitted,
   PositionStake,
   PrefixedTroveId,
+  RiskLevel,
   Token,
   TokenSymbol,
   TroveId,
@@ -31,6 +32,8 @@ import {
 import { CONTRACTS, getBranchContract, getProtocolContract } from "@/src/contracts";
 import { dnum18, DNUM_0, dnumOrNull, jsonStringifyWithDnum } from "@/src/dnum-utils";
 import { CHAIN_BLOCK_EXPLORER, ENV_BRANCHES, LEGACY_CHECK, LIQUITY_STATS_URL } from "@/src/env";
+import { getRedemptionRisk } from "@/src/liquity-math";
+import { usePrice } from "@/src/services/Prices";
 import {
   getAllInterestRateBrackets,
   getIndexedTroveById,
@@ -47,7 +50,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as dn from "dnum";
 import { useMemo } from "react";
 import * as v from "valibot";
-import { encodeAbiParameters, erc20Abi, keccak256, parseAbiParameters, zeroAddress } from "viem";
+import { encodeAbiParameters, erc20Abi, isAddressEqual, keccak256, parseAbiParameters, zeroAddress } from "viem";
 import { useBalance, useConfig as useWagmiConfig, useReadContract, useReadContracts } from "wagmi";
 import { readContract, readContracts } from "wagmi/actions";
 
@@ -425,8 +428,8 @@ export function useAverageInterestRate(branchId: BranchId) {
   };
 }
 
-export function useInterestRateChartData() {
-  const brackets = useAllInterestRateBrackets();
+export function useInterestRateChartData(branchId: BranchId) {
+  const brackets = useInterestRateBrackets(branchId);
   return useQuery({
     queryKey: ["useInterestRateChartData", jsonStringifyWithDnum(brackets.data)],
     queryFn: () => {
@@ -723,6 +726,54 @@ export function useBranchDebt(branchId: BranchId) {
   });
 }
 
+export function useBranchCollateralRatios(branchId: BranchId) {
+  const wagmiConfig = useWagmiConfig();
+  const collToken = getCollToken(branchId);
+  const collTokenPrice = usePrice(collToken?.symbol ?? null);
+
+  return useQuery({
+    queryKey: [
+      "branchCollateralRatios",
+      branchId,
+      jsonStringifyWithDnum(collTokenPrice.data),
+    ],
+    queryFn: async () => {
+      const TroveManager = getBranchContract(branchId, "TroveManager");
+
+      const [totalColl, totalDebt, ccr_] = await readContracts(wagmiConfig, {
+        contracts: [{
+          ...TroveManager,
+          functionName: "getEntireBranchColl",
+        }, {
+          ...TroveManager,
+          functionName: "getEntireBranchDebt",
+        }, {
+          ...TroveManager,
+          functionName: "CCR",
+        }],
+        allowFailure: false,
+      });
+
+      const ccr = dnum18(ccr_);
+
+      if (!collTokenPrice.data || dn.eq(totalDebt, 0)) {
+        return { ccr, isBelowCcr: false, tcr: null };
+      }
+
+      // TCR = (totalCollateral * collTokenPrice) / totalDebt
+      const tcr = dn.div(
+        dn.mul(dnum18(totalColl), collTokenPrice.data),
+        dnum18(totalDebt),
+      );
+
+      const isBelowCcr = dn.lt(tcr, ccr);
+
+      return { ccr, isBelowCcr, tcr };
+    },
+    enabled: Boolean(collTokenPrice.data),
+  });
+}
+
 export function useLiquityStats() {
   return useQuery({
     queryKey: ["liquity-stats"],
@@ -887,14 +938,11 @@ export async function fetchLoanById(
   if (!isPrefixedtroveId(fullId)) return null;
 
   const { branchId, troveId } = parsePrefixedTroveId(fullId);
-
   const TroveManager = getBranchContract(branchId, "TroveManager");
-  const TroveNft = getBranchContract(branchId, "TroveNFT");
 
   const [
     indexedTrove,
     [troveTuple, troveData],
-    borrower,
   ] = await Promise.all([
     getIndexedTroveById(branchId, troveId),
     readContracts(wagmiConfig, {
@@ -909,26 +957,18 @@ export async function fetchLoanById(
         args: [BigInt(troveId)],
       }],
     }),
-    readContract(wagmiConfig, {
-      ...TroveNft,
-      functionName: "ownerOf",
-      args: [BigInt(troveId)],
-    }).catch((_err) => zeroAddress),
   ]);
 
-  const status = troveTuple[3];
-  const batchManager = troveTuple[8];
-
-  return {
-    type: indexedTrove?.mightBeLeveraged ? "multiply" : "borrow",
-    batchManager: BigInt(batchManager) === 0n ? null : batchManager,
+  return !indexedTrove ? null : {
+    type: indexedTrove.mightBeLeveraged ? "multiply" : "borrow",
+    batchManager: isAddressEqual(troveTuple[8], zeroAddress) ? null : troveTuple[8],
     borrowed: dnum18(troveData.entireDebt),
-    borrower,
+    borrower: indexedTrove.borrower,
     branchId,
-    createdAt: indexedTrove?.createdAt ?? 0,
+    createdAt: indexedTrove.createdAt,
     deposit: dnum18(troveData.entireColl),
     interestRate: dnum18(troveData.annualInterestRate),
-    status: indexedTrove?.status ?? statusFromEnum(status),
+    status: statusFromEnum(troveTuple[3]),
     troveId,
   };
 }
@@ -1192,5 +1232,62 @@ export function useNextOwnerIndex(
         : null
     ),
     enabled: borrower !== null && branchId !== null,
+  });
+}
+
+export function useDebtPositioning(branchId: BranchId, interestRate: Dnum | null) {
+  const chartData = useInterestRateChartData(branchId);
+
+  return useMemo(() => {
+    if (!chartData.data || !interestRate) {
+      return { debtInFront: null, totalDebt: null };
+    }
+
+    // find the bracket that contains this interest rate
+    const bracket = chartData.data.find((item) =>
+      dn.lte(item.rate, interestRate)
+      && dn.lt(
+        interestRate,
+        dn.add(
+          item.rate,
+          dn.lt(item.rate, INTEREST_RATE_PRECISE_UNTIL)
+            ? INTEREST_RATE_INCREMENT_PRECISE
+            : INTEREST_RATE_INCREMENT_NORMAL,
+        ),
+      )
+    );
+
+    if (!bracket) {
+      return { debtInFront: null, totalDebt: null };
+    }
+
+    // calculate total debt from all brackets
+    const totalDebt = chartData.data.reduce(
+      (sum, item) => dn.add(sum, item.debt),
+      DNUM_0,
+    );
+
+    return {
+      debtInFront: bracket.debtInFront,
+      totalDebt,
+    };
+  }, [chartData.data, interestRate]);
+}
+
+export function useRedemptionRisk(
+  branchId: BranchId,
+  interestRate: Dnum | null,
+): UseQueryResult<RiskLevel | null> {
+  const debtPositioning = useDebtPositioning(branchId, interestRate);
+
+  return useQuery({
+    queryKey: ["useRedemptionRisk", branchId, jsonStringifyWithDnum(interestRate)],
+    queryFn: () => {
+      if (!debtPositioning.debtInFront || !debtPositioning.totalDebt) {
+        return null;
+      }
+      return getRedemptionRisk(debtPositioning.debtInFront, debtPositioning.totalDebt);
+    },
+    enabled: debtPositioning.debtInFront !== null && debtPositioning.totalDebt !== null,
   });
 }

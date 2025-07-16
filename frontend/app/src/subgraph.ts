@@ -4,13 +4,31 @@ import type { Address, BranchId, TroveId } from "@/src/types";
 import { dnum18 } from "@/src/dnum-utils";
 import { SUBGRAPH_URL } from "@/src/env";
 import { graphql } from "@/src/graphql";
+import { subgraphIndicator } from "@/src/indicators/subgraph-indicator";
 import { getPrefixedTroveId } from "@/src/liquity-utils";
+
+type IndexedTrove = {
+  id: string;
+  borrower: Address;
+  closedAt: number | null;
+  createdAt: number;
+  mightBeLeveraged: boolean;
+  status: string;
+};
+
+async function tryFetch(...args: Parameters<typeof fetch>) {
+  try {
+    return await fetch(...args);
+  } catch {
+    return null;
+  }
+}
 
 async function graphQuery<TResult, TVariables>(
   query: TypedDocumentString<TResult, TVariables>,
   ...[variables]: TVariables extends Record<string, never> ? [] : [TVariables]
 ) {
-  const response = await fetch(SUBGRAPH_URL, {
+  const response = await tryFetch(SUBGRAPH_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -22,7 +40,8 @@ async function graphQuery<TResult, TVariables>(
     ),
   });
 
-  if (!response.ok) {
+  if (response === null || !response.ok) {
+    subgraphIndicator.setError("Subgraph error: unable to fetch data.");
     throw new Error("Error while fetching data from the subgraph");
   }
 
@@ -30,8 +49,12 @@ async function graphQuery<TResult, TVariables>(
 
   if (!result.data) {
     console.error(result);
+    subgraphIndicator.setError("Subgraph error: invalid response.");
     throw new Error("Invalid response from the subgraph");
   }
+
+  // successful query: clear previous indicator errors
+  subgraphIndicator.clearError();
 
   return result.data as TResult;
 }
@@ -51,8 +74,8 @@ export async function getIndexedBlockNumber() {
   return BigInt(result._meta?.block.number ?? -1);
 }
 
-const NextOwnerIndexesByBorrower = graphql(`
-  query BorrowerInfo($id: ID!) {
+const NextOwnerIndexesByBorrowerQuery = graphql(`
+  query NextOwnerIndexesByBorrower($id: ID!) {
     borrowerInfo(id: $id) {
       nextOwnerIndexes
     }
@@ -64,14 +87,14 @@ export async function getNextOwnerIndex(
   borrower: Address,
 ): Promise<number> {
   const { borrowerInfo } = await graphQuery(
-    NextOwnerIndexesByBorrower,
+    NextOwnerIndexesByBorrowerQuery,
     { id: borrower.toLowerCase() },
   );
   return Number(borrowerInfo?.nextOwnerIndexes[branchId] ?? 0);
 }
 
 const TrovesByAccountQuery = graphql(`
-  query TroveStatusesByAccount($account: Bytes!) {
+  query TrovesByAccount($account: Bytes!) {
     troves(
       where: {
     borrower: $account,
@@ -89,20 +112,13 @@ const TrovesByAccountQuery = graphql(`
   }
 `);
 
-export async function getIndexedTrovesByAccount(
-  account: Address,
-): Promise<{
-  id: string;
-  closedAt: number | null;
-  createdAt: number;
-  mightBeLeveraged: boolean;
-  status: string;
-}[]> {
+export async function getIndexedTrovesByAccount(account: Address): Promise<IndexedTrove[]> {
   const { troves } = await graphQuery(TrovesByAccountQuery, {
     account: account.toLowerCase(),
   });
   return troves.map((trove) => ({
     id: trove.id,
+    borrower: account,
     closedAt: trove.closedAt === null || trove.closedAt === undefined
       ? null
       : Number(trove.closedAt) * 1000,
@@ -113,22 +129,30 @@ export async function getIndexedTrovesByAccount(
 }
 
 const TroveByIdQuery = graphql(`
-  query TroveStatusById($id: ID!) {
+  query TroveById($id: ID!) {
     trove(id: $id) {
       id
+      borrower
       closedAt
       createdAt
       mightBeLeveraged
+      previousOwner
       status
     }
   }
 `);
 
-export async function getIndexedTroveById(branchId: BranchId, troveId: TroveId) {
+export async function getIndexedTroveById(
+  branchId: BranchId,
+  troveId: TroveId,
+): Promise<IndexedTrove | null> {
   const prefixedTroveId = getPrefixedTroveId(branchId, troveId);
   const { trove } = await graphQuery(TroveByIdQuery, { id: prefixedTroveId });
   return !trove ? null : {
     id: trove.id,
+    borrower: (
+      trove.status === "liquidated" ? trove.previousOwner : trove.borrower
+    ) as Address,
     closedAt: trove.closedAt === null || trove.closedAt === undefined
       ? null
       : Number(trove.closedAt) * 1000,
@@ -172,7 +196,11 @@ export async function getInterestBatches(
 
 const AllInterestRateBracketsQuery = graphql(`
   query AllInterestRateBrackets {
-    interestRateBrackets(orderBy: rate) {
+    interestRateBrackets(
+      first: 1000
+      where: { totalDebt_gt: 0 }
+      orderBy: rate
+    ) {
       collateral {
         collIndex
       }
@@ -214,7 +242,7 @@ export async function getAllInterestRateBrackets() {
     });
 }
 
-const GovernanceInitiatives = graphql(`
+const GovernanceInitiativesQuery = graphql(`
   query GovernanceInitiatives {
     governanceInitiatives {
       id
@@ -224,6 +252,67 @@ const GovernanceInitiatives = graphql(`
 
 // get all the registered initiatives
 export async function getIndexedInitiatives() {
-  const { governanceInitiatives } = await graphQuery(GovernanceInitiatives);
+  const { governanceInitiatives } = await graphQuery(GovernanceInitiativesQuery);
   return governanceInitiatives.map((initiative) => initiative.id as Address);
+}
+
+const AllocationHistoryQuery = graphql(`
+  query AllocationHistory($user: String $initiative: String) {
+    userAllocations: governanceAllocations(
+      where: {
+        initiative: $initiative
+        user: $user
+      }
+      orderBy: epoch
+      orderDirection: desc
+    ) {
+      epoch
+      voteLQTY
+      vetoLQTY
+      voteOffset
+      vetoOffset
+    }
+
+    totalAllocations: governanceAllocations(
+      where: {
+        initiative: $initiative
+        user: null
+      }
+      orderBy: epoch
+      orderDirection: desc
+    ) {
+      epoch
+      voteLQTY
+      vetoLQTY
+      voteOffset
+      vetoOffset
+    }
+  }
+`);
+
+// A user's allocation history of a single initiative against the total allocations to that initiative,
+// ordered by descending epoch
+export async function getAllocationHistory(user: Address, initiative: Address) {
+  const { userAllocations, totalAllocations } = await graphQuery(AllocationHistoryQuery, {
+    user: user.toLowerCase(),
+    initiative: initiative.toLowerCase(),
+  });
+
+  return {
+    userAllocations: userAllocations.map((allocation) => ({
+      epoch: BigInt(allocation.epoch),
+      voteLQTY: BigInt(allocation.voteLQTY),
+      vetoLQTY: BigInt(allocation.vetoLQTY),
+      voteOffset: BigInt(allocation.voteOffset),
+      vetoOffset: BigInt(allocation.vetoOffset),
+    })),
+
+    totalAllocations: totalAllocations.map((allocation) => ({
+      epoch: BigInt(allocation.epoch),
+      voteLQTY: BigInt(allocation.voteLQTY),
+      vetoLQTY: BigInt(allocation.vetoLQTY),
+      voteOffset: BigInt(allocation.voteOffset),
+      vetoOffset: BigInt(allocation.vetoOffset),
+    })),
+  };
 }

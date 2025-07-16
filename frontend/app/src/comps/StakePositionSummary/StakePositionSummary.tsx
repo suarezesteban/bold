@@ -36,7 +36,7 @@ export function StakePositionSummary({
   const allocatedLqty = dnum18(govUser.data?.allocatedLQTY);
   const totalStakedLqty = dnum18(govStats.data?.totalLQTYStaked);
 
-  const stakedShare = stakedLqty && totalStakedLqty
+  const stakedShare = stakedLqty && totalStakedLqty && dn.gt(totalStakedLqty, 0)
     ? dn.div(stakedLqty, totalStakedLqty)
     : null;
 
@@ -326,7 +326,7 @@ export function StakePositionSummary({
                               <p>
                                 {content.stakeScreen.infoTooltips.votingShare}
                               </p>
-                              {account.address && stakedLqty && dn.gt(stakedLqty, 0) && (
+                              {account.address && stakedLqty && (
                                 <div
                                   className={css({
                                     display: "flex",

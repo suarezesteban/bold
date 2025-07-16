@@ -10,6 +10,7 @@ import { AppLayout } from "@/src/comps/AppLayout/AppLayout";
 import { Blocking } from "@/src/comps/Blocking/Blocking";
 import content from "@/src/content";
 import { Ethereum } from "@/src/services/Ethereum";
+import { IndicatorManager } from "@/src/services/IndicatorManager";
 import { ReactQuery } from "@/src/services/ReactQuery";
 import { StoredState } from "@/src/services/StoredState";
 import { TransactionFlow } from "@/src/services/TransactionFlow";
@@ -42,15 +43,17 @@ export default function Layout({
             <StoredState>
               <BreakpointName>
                 <Ethereum>
-                  <Blocking>
-                    <TransactionFlow>
-                      <About>
-                        <AppLayout>
-                          {children}
-                        </AppLayout>
-                      </About>
-                    </TransactionFlow>
-                  </Blocking>
+                  <IndicatorManager>
+                    <Blocking>
+                      <TransactionFlow>
+                        <About>
+                          <AppLayout>
+                            {children}
+                          </AppLayout>
+                        </About>
+                      </TransactionFlow>
+                    </Blocking>
+                  </IndicatorManager>
                 </Ethereum>
               </BreakpointName>
             </StoredState>
