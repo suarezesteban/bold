@@ -256,10 +256,7 @@ export async function getIndexedInitiatives() {
 const AllocationHistoryQuery = graphql(`
   query AllocationHistory($user: String, $initiative: String) {
     userAllocations: governanceAllocations(
-      where: {
-        initiative: $initiative
-        user: $user
-      }
+      where: { initiative: $initiative, user: $user }
       orderBy: atEpoch
       orderDirection: desc
     ) {
@@ -269,10 +266,7 @@ const AllocationHistoryQuery = graphql(`
     }
 
     totalAllocations: governanceAllocations(
-      where: {
-        initiative: $initiative
-        user: null
-      }
+      where: { initiative: $initiative, user: null }
       orderBy: atEpoch
       orderDirection: desc
     ) {
@@ -283,30 +277,23 @@ const AllocationHistoryQuery = graphql(`
   }
 `);
 
-
-// A user's allocation history of a single initiative against the total allocations to that initiative,
-// ordered by descending epoch
 export async function getAllocationHistory(user: Address, initiative: Address) {
-  const { userAllocations, totalAllocations } = await graphQuery(AllocationHistoryQuery, {
-    user: user.toLowerCase(),
-    initiative: initiative.toLowerCase(),
-  });
+  const { userAllocations, totalAllocations } = await graphQuery(
+    AllocationHistoryQuery,
+    { user: user.toLowerCase(), initiative: initiative.toLowerCase() },
+  );
 
   return {
     userAllocations: userAllocations.map((allocation) => ({
-      epoch: BigInt(allocation.epoch),
+      epoch:    BigInt(allocation.atEpoch),
       voteLQTY: BigInt(allocation.voteLQTY),
       vetoLQTY: BigInt(allocation.vetoLQTY),
-      voteOffset: BigInt(allocation.voteOffset),
-      vetoOffset: BigInt(allocation.vetoOffset),
     })),
 
     totalAllocations: totalAllocations.map((allocation) => ({
-      epoch: BigInt(allocation.epoch),
+      epoch:    BigInt(allocation.atEpoch),
       voteLQTY: BigInt(allocation.voteLQTY),
       vetoLQTY: BigInt(allocation.vetoLQTY),
-      voteOffset: BigInt(allocation.voteOffset),
-      vetoOffset: BigInt(allocation.vetoOffset),
     })),
   };
 }
