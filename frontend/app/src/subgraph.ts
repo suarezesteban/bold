@@ -94,11 +94,11 @@ export async function getNextOwnerIndex(
 }
 
 const TrovesByAccountQuery = graphql(`
-  query TrovesByAccount($account: Bytes!) {
+  query TroveStatusesByAccount($account: Bytes!) {
     troves(
       where: {
-    borrower: $account,
-    status_in: [active, redeemed, liquidated]
+        borrower: $account,
+        status_in: [active, redeemed, liquidated]
       }
       orderBy: updatedAt
       orderDirection: desc
