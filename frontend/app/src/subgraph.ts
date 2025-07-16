@@ -97,7 +97,7 @@ const TrovesByAccountQuery = graphql(`
   query TroveStatusesByAccount($account: Bytes!) {
     troves(
       where: {
-        borrower: $account,
+        borrower: $account
         status_in: [active, redeemed, liquidated]
       }
       orderBy: updatedAt
@@ -136,7 +136,6 @@ const TroveByIdQuery = graphql(`
       closedAt
       createdAt
       mightBeLeveraged
-      previousOwner
       status
     }
   }
@@ -148,14 +147,12 @@ export async function getIndexedTroveById(
 ): Promise<IndexedTrove | null> {
   const prefixedTroveId = getPrefixedTroveId(branchId, troveId);
   const { trove } = await graphQuery(TroveByIdQuery, { id: prefixedTroveId });
-  return !trove ? null : {
+  if (!trove) return null;
+
+  return {
     id: trove.id,
-    borrower: (
-      trove.status === "liquidated" ? trove.previousOwner : trove.borrower
-    ) as Address,
-    closedAt: trove.closedAt === null || trove.closedAt === undefined
-      ? null
-      : Number(trove.closedAt) * 1000,
+    borrower: trove.borrower as Address,   // no more previousOwner logic
+    closedAt: trove.closedAt == null ? null : Number(trove.closedAt) * 1000,
     createdAt: Number(trove.createdAt) * 1000,
     mightBeLeveraged: trove.mightBeLeveraged,
     status: trove.status,
